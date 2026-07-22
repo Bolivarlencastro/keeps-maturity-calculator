@@ -141,7 +141,6 @@ async function submitLeadToHubSpot(profile) {
 function renderQuiz() {
   const progress = (state.question + 1) / questions.length * 100;
   const current = questions[state.question];
-  const givenName = escapeHtml(firstName());
   app.innerHTML = `
     <div class="quiz-progress" role="progressbar" aria-label="Progresso do diagnóstico" aria-valuemin="1" aria-valuemax="20" aria-valuenow="${state.question + 1}" aria-valuetext="Pergunta ${state.question + 1} de ${questions.length}"><span style="width:${progress}%"></span></div>
     <section class="quiz-shell shell">
@@ -150,17 +149,15 @@ function renderQuiz() {
           ${questions.map((question, index) => {
             const selected = state.answers[question.key];
             const active = index === state.question;
-            const instructionId = `question-instruction-${question.key}`;
             const titleId = `question-title-${question.key}`;
             return `<section class="question-panel ${active ? "is-active" : ""}" data-question-index="${index}" aria-labelledby="${titleId}" ${active ? "" : "hidden"}>
               <span class="question-count">Pergunta ${index + 1} de ${questions.length}</span>
               <h1 class="question-title" id="${titleId}" tabindex="-1">${question.text}</h1>
-              <p class="question-instruction" id="${instructionId}">${index === 0 && givenName ? `${givenName}, como isso acontece hoje na sua operação?` : "Como isso acontece hoje na sua operação?"}</p>
               <fieldset class="single-question">
                 <legend class="sr-only">Selecione uma resposta. A escala vai de 1, desconheço, a 5, especialista.</legend>
                 <div class="answer-scale">
                   ${levels.map(level => `<label class="answer-option ${selected === level.value ? "selected" : ""}">
-                    <input type="radio" name="${question.key}" value="${level.value}" aria-describedby="${instructionId}" ${selected === level.value ? "checked" : ""}/>
+                    <input type="radio" name="${question.key}" value="${level.value}" ${selected === level.value ? "checked" : ""}/>
                     <span class="answer-key" aria-hidden="true">${level.value}</span>
                     <strong>${level.short}</strong>
                   </label>`).join("")}
