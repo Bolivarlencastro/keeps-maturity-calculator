@@ -28,6 +28,7 @@ npm test
 - Regras do diagnóstico isoladas em `diagnostic.js`; a interface e as integrações ficam em `app.js`.
 - As 20 perguntas, 5 alternativas, 9 dimensões, classificações e recomendações foram recuperadas do bundle público da calculadora original e preservadas literalmente.
 - A nota geral pondera igualmente as 20 perguntas; as notas de dimensão são médias internas de seus respectivos agrupamentos.
+- O resultado destaca as três menores dimensões e o principal ponto de alavancagem, sem ocultar o diagnóstico completo: as 36 combinações originais de pontos fortes, oportunidades, próximos passos e resumo executivo permanecem disponíveis por dimensão.
 - Captura progressiva integrada à própria landing page: nome e e-mail antes do quiz, resultado completo sem novo bloqueio e consultoria opcional depois do resultado.
 - Nome e e-mail personalizam a experiência e preenchem automaticamente o formulário comercial.
 - Telefone/WhatsApp é apresentado como opcional no pedido de consultoria.

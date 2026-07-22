@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 const { categories, calculate, createDefaultState, levels, normalizeState, playbooks, questions } = await import("./diagnostic.js");
+const { recommendations } = await import("./recommendations.js");
 
 test("keeps the original 20 questions across 9 dimensions", () => {
   assert.equal(categories.length, 9);
@@ -40,6 +41,9 @@ test("weights each question equally instead of weighting each dimension equally"
 test("uses the recommendation matrix recovered from the original calculator", () => {
   assert.equal(playbooks.Iniciante.diagnosis.action, "Capacitar equipe em metodologias de LNT");
   assert.equal(playbooks.Especialista.purpose.action, "Posicionar UC como diferencial competitivo");
+  assert.equal(Object.values(recommendations).reduce((total, level) => total + Object.keys(level).length, 0), 36);
+  assert.equal(recommendations.Iniciante.diagnosis.nextSteps[0], playbooks.Iniciante.diagnosis.action);
+  assert.equal(recommendations.Especialista.purpose.executiveSummary, playbooks.Especialista.purpose.detail);
 });
 
 test("sanitizes persisted state before rendering", () => {

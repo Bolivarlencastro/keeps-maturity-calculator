@@ -1,4 +1,5 @@
 import { calculate, createDefaultState, levelFor, levels, normalizeState, playbooks, questions } from "./diagnostic.js";
+import { recommendations } from "./recommendations.js";
 
 const storageKey = "keeps-maturity-v4";
 const previousStorageKey = "keeps-maturity-v3";
@@ -252,6 +253,8 @@ function renderResult() {
   const sorted = [...result.scores].sort((a, b) => a.score - b.score);
   const top = [...result.scores].sort((a, b) => b.score - a.score)[0];
   const resultPlaybook = playbooks[result.classification];
+  const detailedRecommendations = recommendations[result.classification];
+  const recommendationList = items => items.map(item => `<li>${escapeHtml(item)}</li>`).join("");
   const whatsappMessage = `Olá! Concluí o Diagnóstico de Maturidade em T&D da Keeps. Meu resultado foi ${result.total}/100 (${result.classification}) e gostaria de conversar com um especialista.`;
   const whatsappUrl = `https://wa.me/554896064505?text=${encodeURIComponent(whatsappMessage)}`;
   const message = result.total >= 80 ? "Sua operação já é referência. O desafio agora é transformar excelência em vantagem competitiva." : result.total >= 60 ? "Você tem uma base consistente. Agora é hora de conectar as práticas e ampliar o impacto no negócio." : result.total >= 40 ? "Existem boas práticas em curso, mas elas ainda precisam ganhar consistência e conexão estratégica." : "Você tem uma ótima oportunidade de construir as bases certas, na ordem certa, sem carregar processos desnecessários.";
@@ -286,6 +289,28 @@ function renderResult() {
           </section>
           <section class="strength-card">
             <div class="strength-icon">${icon("trend")}</div><div><span class="section-label">Seu ponto de alavancagem</span><h3>${top.shortName || top.name}</h3><p>Use as práticas que já funcionam nessa dimensão para acelerar a evolução das áreas prioritárias.</p></div>
+          </section>
+          <section class="dimension-plan">
+            <div class="priority-heading"><span class="section-label">Diagnóstico completo</span><h2>Seu plano para as nove dimensões</h2><p>Abra cada dimensão para consultar pontos fortes, oportunidades e próximos passos.</p></div>
+            <div class="dimension-plan-list">
+              ${sorted.map((item, index) => {
+                const recommendation = detailedRecommendations[item.id];
+                return `<details class="dimension-plan-item" ${index === 0 ? "open" : ""}>
+                  <summary>
+                    <span><small>${index < 3 ? `Prioridade 0${index + 1}` : levelFor(item.score)}</small><strong>${item.shortName || item.name}</strong></span>
+                    <b>${Math.round(item.score)}/100</b>
+                  </summary>
+                  <div class="dimension-plan-body">
+                    <p>${escapeHtml(recommendation.executiveSummary)}</p>
+                    <div class="dimension-plan-columns">
+                      <div><h3>Pontos fortes</h3><ul class="positive-list">${recommendationList(recommendation.strengths)}</ul></div>
+                      <div><h3>Oportunidades</h3><ul>${recommendationList(recommendation.opportunities)}</ul></div>
+                    </div>
+                    <div class="next-steps"><h3>Próximos passos</h3><ol>${recommendationList(recommendation.nextSteps)}</ol></div>
+                  </div>
+                </details>`;
+              }).join("")}
+            </div>
           </section>
           <div class="result-tools"><button class="text-button" data-action="restart">${icon("restart")} Refazer diagnóstico</button><button class="text-button" data-action="print">Imprimir ou salvar em PDF</button></div>
         </div>
