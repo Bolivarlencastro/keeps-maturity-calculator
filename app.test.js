@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-const { categories, calculate, normalizeState } = await import("./diagnostic.js");
+const { categories, calculate, createDefaultState, normalizeState } = await import("./diagnostic.js");
 
 test("keeps the original 20 questions across 9 dimensions", () => {
   assert.equal(categories.length, 9);
@@ -24,6 +24,14 @@ test("sanitizes persisted state before rendering", () => {
   assert.equal(normalized.screen, "quiz");
   assert.equal(normalized.question, 19);
   assert.deepEqual(normalized.answers, { "0-0": 5 });
+  assert.deepEqual(normalized.profile, { name: "", email: "" });
+});
+
+test("normalizes and preserves progressive lead data", () => {
+  const normalized = normalizeState({ screen: "identify", profile: { name: "  Bolívar Alencastro  ", email: " BOLIVAR@EXAMPLE.COM " } });
+  assert.equal(normalized.screen, "identify");
+  assert.deepEqual(normalized.profile, { name: "Bolívar Alencastro", email: "bolivar@example.com" });
+  assert.deepEqual(createDefaultState().profile, { name: "", email: "" });
 });
 
 test("uses the expected classification boundaries", () => {

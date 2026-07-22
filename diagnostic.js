@@ -65,11 +65,11 @@ export const questions = categories.flatMap((category, categoryIndex) =>
   }))
 );
 
-const screens = new Set(["intro", "quiz", "result"]);
+const screens = new Set(["intro", "identify", "quiz", "result"]);
 const questionKeys = new Set(questions.map(question => question.key));
 
 export function createDefaultState() {
-  return { screen: "intro", question: 0, answers: {} };
+  return { screen: "intro", question: 0, answers: {}, profile: { name: "", email: "" } };
 }
 
 export function normalizeState(candidate = {}) {
@@ -81,7 +81,11 @@ export function normalizeState(candidate = {}) {
   const question = Math.min(Math.max(Number(candidate.question) || 0, 0), questions.length - 1);
   let screen = screens.has(candidate.screen) ? candidate.screen : "intro";
   if (screen === "result" && Object.keys(answers).length !== questions.length) screen = "quiz";
-  return { screen, question, answers };
+  const profile = {
+    name: typeof candidate.profile?.name === "string" ? candidate.profile.name.trim().slice(0, 120) : "",
+    email: typeof candidate.profile?.email === "string" ? candidate.profile.email.trim().toLowerCase().slice(0, 254) : ""
+  };
+  return { screen, question, answers, profile };
 }
 
 export function calculate(answers) {

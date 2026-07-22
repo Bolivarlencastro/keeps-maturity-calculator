@@ -1,7 +1,13 @@
 import { calculate, categories, createDefaultState, levelFor, levels, normalizeState, playbooks, questions } from "./diagnostic.js";
 
-const storageKey = "keeps-maturity-v3";
+const storageKey = "keeps-maturity-v4";
+const previousStorageKey = "keeps-maturity-v3";
 const legacyStorageKey = "keeps-maturity-v2";
+const hubspot = {
+  portalId: "23523710",
+  leadFormId: "",
+  consultationFormId: "48477db3-8a25-4ab4-972e-006db08fdcfc"
+};
 const app = document.querySelector("#app");
 const announcer = document.querySelector("#app-announcer");
 let state = loadState();
@@ -9,7 +15,7 @@ let navigationLocked = false;
 
 function loadState() {
   try {
-    const saved = localStorage.getItem(storageKey) || localStorage.getItem(legacyStorageKey);
+    const saved = localStorage.getItem(storageKey) || localStorage.getItem(previousStorageKey) || localStorage.getItem(legacyStorageKey);
     return normalizeState(JSON.parse(saved) || createDefaultState());
   } catch {
     return createDefaultState();
@@ -35,7 +41,21 @@ function render() {
   document.body?.setAttribute("data-screen", state.screen);
   if (state.screen === "quiz") renderQuiz();
   else if (state.screen === "result") renderResult();
+  else if (state.screen === "identify") renderIdentify();
   else renderIntro();
+}
+
+function track(event, parameters = {}) {
+  window.dataLayer = window.dataLayer || [];
+  window.dataLayer.push({ event, diagnostic_name: "maturidade_td", ...parameters });
+}
+
+function firstName() {
+  return state.profile?.name?.trim().split(/\s+/)[0] || "";
+}
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>'"]/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character]);
 }
 
 function renderIntro() {
@@ -45,10 +65,9 @@ function renderIntro() {
       <div class="hero-copy">
         <span class="kicker">Diagnóstico gratuito · resultado imediato</span>
         <h1 tabindex="-1">O próximo salto do seu T&D começa com um diagnóstico claro.</h1>
-        <p class="hero-lead">Responda a 20 perguntas e avalie nove dimensões da sua operação de T&D. Ao final, descubra onde concentrar esforços para gerar mais impacto no negócio — sem precisar se cadastrar.</p>
+        <p class="hero-lead">Avalie as principais dimensões da sua operação de T&amp;D e descubra onde concentrar esforços para ampliar o impacto no negócio.</p>
         <div class="hero-actions">
           <button class="button button-primary" data-action="start">${answered ? "Continuar diagnóstico" : "Começar diagnóstico"} ${icon("arrow")}</button>
-          <span class="time-note">${icon("clock")} Cerca de 4 minutos</span>
         </div>
       </div>
       <div class="hero-visual" aria-label="Prévia das dimensões avaliadas">
@@ -66,9 +85,63 @@ function renderIntro() {
     </section>`;
 }
 
+function renderIdentify() {
+  app.innerHTML = `
+    <section class="identify-shell shell">
+      <div class="identify-copy">
+        <span class="kicker">Diagnóstico personalizado</span>
+        <h1 tabindex="-1">Antes de começar, queremos conhecer você.</h1>
+        <p>Informe apenas seus dados essenciais para personalizar a experiência e acessar seu diagnóstico ao final.</p>
+        <div class="identify-benefits" aria-label="O que você receberá">
+          <span>${icon("check")} Pontuação de maturidade</span>
+          <span>${icon("check")} Prioridades de evolução</span>
+          <span>${icon("check")} Recomendações práticas</span>
+        </div>
+      </div>
+      <form class="identify-form" data-identify-form>
+        <div>
+          <label for="lead-name">Como podemos chamar você?</label>
+          <input id="lead-name" name="name" type="text" autocomplete="name" maxlength="120" required value="${escapeAttribute(state.profile?.name || "")}" />
+        </div>
+        <div>
+          <label for="lead-email">Seu melhor e-mail profissional</label>
+          <input id="lead-email" name="email" type="email" autocomplete="email" maxlength="254" required value="${escapeAttribute(state.profile?.email || "")}" />
+        </div>
+        <button class="button button-primary" type="submit"><span data-submit-label>Começar meu diagnóstico</span> ${icon("arrow")}</button>
+        <p class="form-error" data-identify-error role="alert" hidden></p>
+        <p class="identify-privacy">Ao continuar, você concorda com nossa <a href="https://keeps.com.br/politica-de-privacidade/" target="_blank" rel="noreferrer">Política de Privacidade</a>.</p>
+      </form>
+    </section>`;
+}
+
+function escapeAttribute(value) {
+  return String(value).replace(/[&<>'"]/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character]);
+}
+
+async function submitLeadToHubSpot(profile) {
+  if (!hubspot.leadFormId) return { synced: false };
+  const names = profile.name.trim().split(/\s+/);
+  const response = await fetch(`https://api.hsforms.com/submissions/v3/integration/submit/${hubspot.portalId}/${hubspot.leadFormId}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      submittedAt: Date.now(),
+      fields: [
+        { objectTypeId: "0-1", name: "firstname", value: names[0] || "" },
+        { objectTypeId: "0-1", name: "lastname", value: names.slice(1).join(" ") },
+        { objectTypeId: "0-1", name: "email", value: profile.email }
+      ],
+      context: { pageUri: window.location.href, pageName: document.title }
+    })
+  });
+  if (!response.ok) throw new Error("Não foi possível salvar seus dados agora. Tente novamente.");
+  return { synced: true };
+}
+
 function renderQuiz() {
   const progress = (state.question + 1) / questions.length * 100;
   const current = questions[state.question];
+  const givenName = escapeHtml(firstName());
   app.innerHTML = `
     <div class="quiz-progress" role="progressbar" aria-label="Progresso do diagnóstico" aria-valuemin="1" aria-valuemax="20" aria-valuenow="${state.question + 1}" aria-valuetext="Pergunta ${state.question + 1} de ${questions.length}"><span style="width:${progress}%"></span></div>
     <section class="quiz-shell shell">
@@ -82,7 +155,7 @@ function renderQuiz() {
             return `<section class="question-panel ${active ? "is-active" : ""}" data-question-index="${index}" aria-labelledby="${titleId}" ${active ? "" : "hidden"}>
               <span class="question-count">Pergunta ${index + 1} de ${questions.length}</span>
               <h1 class="question-title" id="${titleId}" tabindex="-1">${question.text}</h1>
-              <p class="question-instruction" id="${instructionId}">Como isso acontece hoje na sua operação?</p>
+              <p class="question-instruction" id="${instructionId}">${index === 0 && givenName ? `${givenName}, como isso acontece hoje na sua operação?` : "Como isso acontece hoje na sua operação?"}</p>
               <fieldset class="single-question">
                 <legend class="sr-only">Selecione uma resposta. A escala vai de 1, ainda não, a 5, sou referência.</legend>
                 <div class="answer-scale">
@@ -112,6 +185,7 @@ function furthestQuestion() {
 
 function renderResult() {
   const result = calculate(state.answers);
+  const givenName = escapeHtml(firstName());
   const sorted = [...result.scores].sort((a, b) => a.score - b.score);
   const top = [...result.scores].sort((a, b) => b.score - a.score)[0];
   const whatsappMessage = `Olá! Concluí o Diagnóstico de Maturidade em T&D da Keeps. Meu resultado foi ${result.total}/100 (${result.classification}) e gostaria de conversar com um especialista.`;
@@ -121,7 +195,7 @@ function renderResult() {
     <section class="result-hero">
       <div class="shell result-head">
         <div>
-          <span class="kicker kicker-light">Seu diagnóstico está pronto</span>
+          <span class="kicker kicker-light">${givenName ? `${givenName}, seu diagnóstico está pronto` : "Seu diagnóstico está pronto"}</span>
           <h1 tabindex="-1">${result.classification}</h1>
           <p>${message}</p>
         </div>
@@ -151,17 +225,18 @@ function renderResult() {
           </section>
           <div class="result-tools"><button class="text-button" data-action="restart">${icon("restart")} Refazer diagnóstico</button><button class="text-button" data-action="print">Imprimir ou salvar em PDF</button></div>
         </div>
-        <aside class="result-lead" aria-label="Agende um diagnóstico com a Keeps">
+        <aside class="result-lead" aria-label="Solicite uma consultoria com a Keeps">
           <div class="sticky-conversion">
-            <h2>Leve este diagnóstico para a prática.</h2>
-            <p>Deixe seus dados e um especialista da Keeps entrará em contato.</p>
+            <span class="section-label">Consultoria gratuita de 1 hora</span>
+            <h2>Transforme seu diagnóstico em um plano de ação.</h2>
+            <p>Converse com um especialista da Keeps para interpretar seus resultados e definir os próximos passos. O WhatsApp é opcional.</p>
             <div class="lead-form-card">
               <div id="keeps-lead-form" aria-live="polite"><p class="form-loading">Carregando formulário…</p></div>
               <p class="form-privacy">Ao enviar, você concorda com nossa <a href="https://keeps.com.br/politica-de-privacidade/" target="_blank" rel="noreferrer">Política de Privacidade</a>.</p>
               <div class="conversion-divider"><span>ou</span></div>
               <a class="button whatsapp-button" href="${whatsappUrl}" target="_blank" rel="noreferrer">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 11.6a8.5 8.5 0 0 1-12.6 7.5L3 20.5l1.4-4.7a8.5 8.5 0 1 1 16.1-4.2Z"/><path d="M8.1 7.8c.2-.5.5-.5.8-.5h.4c.1 0 .3 0 .4.4l.7 1.7c.1.3.1.5-.1.7l-.5.6c-.2.2-.3.4-.1.7.5 1 1.3 1.8 2.3 2.3.3.2.5.1.7-.1l.7-.8c.2-.2.4-.2.7-.1l1.6.8c.3.1.4.3.4.5 0 .3-.1 1.2-.8 1.8-.6.5-1.4.8-2.4.5-1.2-.3-2.7-1-4.2-2.4-1.2-1.1-2-2.5-2.3-3.5-.3-1.1 0-2 .4-2.4.4-.4.8-.5 1.3-.2Z"/></svg>
-                Falar pelo WhatsApp
+                Prefiro conversar pelo WhatsApp
               </a>
             </div>
           </div>
@@ -179,16 +254,34 @@ function mountHubSpotForm() {
     target.innerHTML = "";
     window.hbspt.forms.create({
       region: "na1",
-      portalId: "23523710",
-      formId: "48477db3-8a25-4ab4-972e-006db08fdcfc",
+      portalId: hubspot.portalId,
+      formId: hubspot.consultationFormId,
       target: "#keeps-lead-form",
       onFormReady: form => {
         const formElement = form?.querySelector ? form : form?.[0] || target.querySelector("form");
-        formElement?.setAttribute("aria-label", "Fale com um especialista da Keeps");
+        formElement?.setAttribute("aria-label", "Solicite sua consultoria gratuita de uma hora");
+        prefillHubSpotField(formElement, "firstname", state.profile?.name?.split(/\s+/)[0]);
+        prefillHubSpotField(formElement, "lastname", state.profile?.name?.split(/\s+/).slice(1).join(" "));
+        prefillHubSpotField(formElement, "email", state.profile?.email);
+        ["firstname", "lastname", "email"].forEach(name => formElement?.querySelector(`[name="${name}"]`)?.closest(".hs-form-field")?.classList.add("prefilled-field"));
+        const phone = formElement?.querySelector('[name="phone"], [name="mobilephone"]');
+        if (phone) {
+          phone.required = false;
+          phone.removeAttribute("data-rule-required");
+          const field = phone.closest(".hs-form-field");
+          field?.classList.add("optional-field");
+          const label = field?.querySelector("label");
+          if (label) label.childNodes.forEach(node => { if (node.nodeType === Node.TEXT_NODE) node.textContent = node.textContent.replace(/\*+\s*$/, ""); });
+          label?.insertAdjacentHTML("beforeend", '<span class="optional-label"> (opcional)</span>');
+          field?.querySelectorAll(".hs-form-required").forEach(mark => mark.remove());
+        }
         const submit = formElement?.querySelector('input[type="submit"]');
-        if (submit) submit.value = "Falar com um especialista";
+        if (submit) submit.value = "Quero minha consultoria de 1 hora";
       },
-      onFormSubmitted: () => announce("Dados enviados. Em breve, um especialista da Keeps entrará em contato.")
+      onFormSubmitted: () => {
+        track("consultation_requested", { contact_preference: "form" });
+        announce("Solicitação enviada. Em breve, um especialista da Keeps entrará em contato.");
+      }
     });
   };
   if (window.hbspt?.forms) return createForm();
@@ -205,6 +298,14 @@ function mountHubSpotForm() {
   document.head.appendChild(script);
 }
 
+function prefillHubSpotField(form, name, value) {
+  const input = form?.querySelector(`[name="${name}"]`);
+  if (!input || !value) return;
+  input.value = value;
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+  input.dispatchEvent(new Event("change", { bubbles: true }));
+}
+
 function announce(message) {
   if (!announcer) return;
   announcer.textContent = "";
@@ -216,7 +317,7 @@ function prefersReducedMotion() {
 }
 
 function focusCurrentHeading() {
-  const heading = app.querySelector(".question-panel:not([hidden]) .question-title, .result-head h1, .hero h1");
+  const heading = app.querySelector(".question-panel:not([hidden]) .question-title, .result-head h1, .identify-copy h1, .hero h1");
   heading?.focus({ preventScroll: true });
 }
 
@@ -318,6 +419,7 @@ function advanceQuiz() {
   const current = questions[state.question];
   if (!state.answers[current?.key]) return;
   if (state.question < questions.length - 1) return moveQuestion(state.question + 1);
+  track("diagnostic_completed", { questions_answered: Object.keys(state.answers).length });
   return navigate(() => { state.screen = "result"; }, { message: "Resultado do diagnóstico" });
 }
 
@@ -327,6 +429,7 @@ function selectAnswer(input) {
   const value = Number(input.value);
   if (!Number.isInteger(value) || value < 1 || value > 5) return;
   state.answers[current.key] = value;
+  track("question_answered", { question_number: state.question + 1, dimension: current.category.id, answer_value: value });
   saveState();
   app.querySelectorAll(`input[name="${current.key}"]`).forEach(radio => {
     const selected = Number(radio.value) === value;
@@ -346,20 +449,56 @@ app.addEventListener("change", event => {
   selectAnswer(event.target);
 });
 
+app.addEventListener("submit", async event => {
+  if (!event.target.matches("[data-identify-form]")) return;
+  event.preventDefault();
+  if (navigationLocked) return;
+  const data = new FormData(event.target);
+  const profile = { name: String(data.get("name") || "").trim(), email: String(data.get("email") || "").trim().toLowerCase() };
+  const submit = event.target.querySelector('button[type="submit"]');
+  const label = submit?.querySelector("[data-submit-label]");
+  const error = event.target.querySelector("[data-identify-error]");
+  if (submit) submit.disabled = true;
+  if (label) label.textContent = "Salvando…";
+  if (error) error.hidden = true;
+  let submission;
+  try {
+    submission = await submitLeadToHubSpot(profile);
+  } catch (submissionError) {
+    if (submit) submit.disabled = false;
+    if (label) label.textContent = "Começar meu diagnóstico";
+    if (error) { error.textContent = submissionError.message; error.hidden = false; }
+    track("lead_capture_error", { lead_capture_stage: "before_quiz" });
+    return;
+  }
+  state.profile = profile;
+  track("lead_details_submitted", { lead_capture_stage: "before_quiz", crm_synced: submission.synced });
+  track("diagnostic_started", { returning_user: Object.keys(state.answers).length > 0 });
+  navigate(() => {
+    state.screen = "quiz";
+    state.question = furthestQuestion();
+  }, { message: `Vamos começar, ${firstName()}. Pergunta ${furthestQuestion() + 1} de ${questions.length}` });
+});
+
 app.addEventListener("click", event => {
   const trigger = event.target.closest("[data-action]");
   if (!trigger) return;
   const action = trigger.dataset.action;
   if (action === "print") { window.print(); return; }
   if (action === "start") return navigate(() => {
-    state.screen = "quiz";
+    track("diagnostic_cta_clicked", { returning_user: Boolean(state.profile?.email) });
+    state.screen = state.profile?.name && state.profile?.email ? "quiz" : "identify";
     state.question = furthestQuestion();
-  }, { message: `Pergunta ${furthestQuestion() + 1} de ${questions.length}` });
+  }, { message: state.profile?.name && state.profile?.email ? `Pergunta ${furthestQuestion() + 1} de ${questions.length}` : "Identificação para começar o diagnóstico" });
   if (action === "back" && state.question > 0) return moveQuestion(state.question - 1);
   if (action === "next") return advanceQuiz();
   if (action === "restart") return navigate(() => {
-    state = { screen: "intro", question: 0, answers: {} };
+    state = { ...createDefaultState(), profile: state.profile };
   }, { direction: "back", message: "Diagnóstico reiniciado" });
+});
+
+app.addEventListener("click", event => {
+  if (event.target.closest(".whatsapp-button")) track("whatsapp_click", { placement: "result_consultation" });
 });
 
 document.addEventListener("keydown", event => {
