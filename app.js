@@ -1,4 +1,4 @@
-import { calculate, categories, createDefaultState, levelFor, levels, normalizeState, playbooks, questions } from "./diagnostic.js";
+import { calculate, createDefaultState, levelFor, levels, normalizeState, playbooks, questions } from "./diagnostic.js";
 
 const storageKey = "keeps-maturity-v4";
 const previousStorageKey = "keeps-maturity-v3";
@@ -72,10 +72,28 @@ function renderIntro() {
           <p class="hero-form-privacy">Ao continuar, você concorda com nossa <a href="https://keeps.com.br/politica-de-privacidade/" target="_blank" rel="noreferrer">Política de Privacidade</a>.</p>
         </form>
       </div>
-      <div class="hero-visual" aria-label="Prévia das dimensões avaliadas">
-        <div class="orbit orbit-one"></div><div class="orbit orbit-two"></div>
-        <div class="score-preview"><span>9</span><small>dimensões<br/>avaliadas</small></div>
-        ${categories.slice(0, 6).map((item, index) => `<span class="dimension-pill pill-${index + 1}">${item.shortName || item.name}</span>`).join("")}
+      <div class="hero-visual" aria-label="Prévia de um mapa de maturidade">
+        <div class="maturity-preview">
+          <div class="preview-heading">
+            <span>Prévia do resultado</span>
+            <small><i></i> 9 dimensões</small>
+          </div>
+          <h2>Mapa de maturidade</h2>
+          <p>Uma leitura objetiva das dimensões que mais pedem atenção.</p>
+          <div class="preview-list" aria-hidden="true">
+            ${[
+              ["Propósito", 76],
+              ["Diagnóstico", 64],
+              ["Metodologias", 58],
+              ["Escalabilidade", 70],
+              ["Indicadores", 38]
+            ].map(([name, value]) => `<div class="preview-row ${value === 38 ? "is-priority" : ""}"><span>${name}</span><div><i style="--preview-value:${value}%"></i></div><b>${value}</b></div>`).join("")}
+          </div>
+          <div class="preview-insight">
+            <span>${icon("trend")}</span>
+            <div><small>Prioridade identificada</small><strong>Comece pelos indicadores</strong></div>
+          </div>
+        </div>
       </div>
     </section>
     <section class="trust-strip">
