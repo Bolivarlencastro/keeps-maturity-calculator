@@ -5,12 +5,18 @@ const previousStorageKey = "keeps-maturity-v3";
 const legacyStorageKey = "keeps-maturity-v2";
 const hubspot = {
   portalId: "23523710",
-  leadFormId: "",
+  leadFormId: "943890c9-07b9-4126-9c16-887ae066f662",
   consultationFormId: "48477db3-8a25-4ab4-972e-006db08fdcfc"
+};
+const analyticsConfig = {
+  endpoint: "https://script.google.com/macros/s/AKfycbwGZk4lLTC7oYLFOhMnHpexVO_-XSikrs5FvPnL7z05sjgFjwxi8XaBHvES0NYoDOwFag/exec",
+  schemaVersion: 1,
+  storageKey: "keeps-maturity-analytics-v1"
 };
 const app = document.querySelector("#app");
 const announcer = document.querySelector("#app-announcer");
 let state = loadState();
+let analyticsContext = loadAnalyticsContext();
 let navigationLocked = false;
 
 function loadState() {
@@ -43,9 +49,81 @@ function render() {
   else renderIntro();
 }
 
-function track(event, parameters = {}) {
+function createIdentifier(prefix) {
+  const random = globalThis.crypto?.randomUUID?.() || `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+  return `${prefix}_${random.replace(/[^a-zA-Z0-9_-]/g, "")}`;
+}
+
+function currentAttribution() {
+  const params = new URLSearchParams(globalThis.location?.search || "");
+  return Object.fromEntries(["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"]
+    .map(key => [key, params.get(key) || ""]));
+}
+
+function loadAnalyticsContext() {
+  const fallback = {
+    userId: createIdentifier("usr"),
+    sessionId: createIdentifier("ses"),
+    startedAt: new Date().toISOString(),
+    attribution: currentAttribution(),
+    referrer: document.referrer || ""
+  };
+  try {
+    const saved = JSON.parse(localStorage.getItem(analyticsConfig.storageKey) || "null");
+    const context = saved && saved.userId && saved.sessionId && saved.startedAt
+      ? { ...fallback, ...saved, attribution: saved.attribution || fallback.attribution }
+      : fallback;
+    localStorage.setItem(analyticsConfig.storageKey, JSON.stringify(context));
+    return context;
+  } catch {
+    return fallback;
+  }
+}
+
+function rotateAnalyticsSession() {
+  analyticsContext = {
+    ...analyticsContext,
+    sessionId: createIdentifier("ses"),
+    startedAt: new Date().toISOString()
+  };
+  try { localStorage.setItem(analyticsConfig.storageKey, JSON.stringify(analyticsContext)); } catch { /* Storage is optional. */ }
+}
+
+function sendAnalytics(event, parameters = {}, { includeProfile = false } = {}) {
+  if (!analyticsConfig.endpoint) return;
+  const body = JSON.stringify({
+    schema_version: analyticsConfig.schemaVersion,
+    event_id: createIdentifier("evt"),
+    event,
+    event_at: new Date().toISOString(),
+    session_id: analyticsContext.sessionId,
+    user_id: analyticsContext.userId,
+    started_at: analyticsContext.startedAt,
+    elapsed_ms: Math.max(0, Date.now() - Date.parse(analyticsContext.startedAt)),
+    page_url: globalThis.location?.href || "",
+    referrer: analyticsContext.referrer,
+    attribution: analyticsContext.attribution,
+    profile: includeProfile ? state.profile : undefined,
+    data: {
+      screen: state.screen,
+      question_number: state.screen === "quiz" ? state.question + 1 : undefined,
+      questions_answered: Object.keys(state.answers).length,
+      ...parameters
+    }
+  });
+  fetch(analyticsConfig.endpoint, {
+    method: "POST",
+    mode: "no-cors",
+    keepalive: true,
+    headers: { "Content-Type": "text/plain;charset=UTF-8" },
+    body
+  }).catch(() => { /* Analytics must never block the diagnostic. */ });
+}
+
+function track(event, parameters = {}, options = {}) {
   window.dataLayer = window.dataLayer || [];
   window.dataLayer.push({ event, diagnostic_name: "maturidade_td", ...parameters });
+  sendAnalytics(event, parameters, options);
 }
 
 function firstName() {
@@ -69,7 +147,7 @@ function renderIntro() {
           <label for="lead-email"><span>E-mail profissional</span><input id="lead-email" name="email" type="email" autocomplete="email" maxlength="254" placeholder="voce@empresa.com" required value="${escapeAttribute(state.profile?.email || "")}" /></label>
           <button class="button button-primary" type="submit"><span data-submit-label>${answered ? "Continuar diagnóstico" : "Começar diagnóstico"}</span> ${icon("arrow")}</button>
           <p class="form-error" data-identify-error role="alert" hidden></p>
-          <p class="hero-form-privacy">Ao continuar, você concorda com nossa <a href="https://keeps.com.br/politica-de-privacidade/" target="_blank" rel="noreferrer">Política de Privacidade</a>.</p>
+          <p class="hero-form-privacy">Ao continuar, você concorda com nossa <a href="https://keeps.com.br/politica-de-privacidade/" target="_blank" rel="noreferrer">Política de Privacidade</a> e com a medição de uso do diagnóstico.</p>
         </form>
       </div>
       <div class="hero-visual" aria-hidden="true">
@@ -109,18 +187,17 @@ function escapeAttribute(value) {
 
 async function submitLeadToHubSpot(profile) {
   if (!hubspot.leadFormId) return { synced: false };
-  const names = profile.name.trim().split(/\s+/);
+  const hubspotCookie = document.cookie.match(/(?:^|;\s*)hubspotutk=([^;]+)/)?.[1];
   const response = await fetch(`https://api.hsforms.com/submissions/v3/integration/submit/${hubspot.portalId}/${hubspot.leadFormId}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       submittedAt: Date.now(),
       fields: [
-        { objectTypeId: "0-1", name: "firstname", value: names[0] || "" },
-        { objectTypeId: "0-1", name: "lastname", value: names.slice(1).join(" ") },
+        { objectTypeId: "0-1", name: "firstname", value: profile.name },
         { objectTypeId: "0-1", name: "email", value: profile.email }
       ],
-      context: { pageUri: window.location.href, pageName: document.title }
+      context: { hutk: hubspotCookie, pageUri: window.location.href, pageName: document.title }
     })
   });
   if (!response.ok) throw new Error("Não foi possível salvar seus dados agora. Tente novamente.");
@@ -266,7 +343,12 @@ function mountHubSpotForm() {
         if (submit) submit.value = "Quero minha consultoria de 1 hora";
       },
       onFormSubmitted: () => {
-        track("consultation_requested", { contact_preference: "form" });
+        const result = calculate(state.answers);
+        track("consultation_requested", {
+          contact_preference: "form",
+          total_score: result.total,
+          classification: result.classification
+        });
         announce("Solicitação enviada. Em breve, um especialista da Keeps entrará em contato.");
       }
     });
@@ -374,6 +456,13 @@ async function moveQuestion(nextQuestion) {
   try {
     state.question = targetIndex;
     saveState();
+    const current = questions[state.question];
+    track("question_viewed", {
+      question_key: current.key,
+      question_number: state.question + 1,
+      dimension: current.category.id,
+      question_text: current.text
+    });
     updateQuizChrome();
     if (!prefersReducedMotion() && previousPanel?.animate) {
       const exit = previousPanel.animate([{ opacity: 1 }, { opacity: 0 }], {
@@ -406,7 +495,14 @@ function advanceQuiz() {
   const current = questions[state.question];
   if (!state.answers[current?.key]) return;
   if (state.question < questions.length - 1) return moveQuestion(state.question + 1);
-  track("diagnostic_completed", { questions_answered: Object.keys(state.answers).length });
+  const result = calculate(state.answers);
+  track("diagnostic_completed", {
+    questions_answered: Object.keys(state.answers).length,
+    total_score: result.total,
+    classification: result.classification,
+    scores: Object.fromEntries(result.scores.map(item => [item.id, Math.round(item.score)])),
+    answers: state.answers
+  });
   return navigate(() => { state.screen = "result"; }, { message: "Resultado do diagnóstico" });
 }
 
@@ -416,7 +512,14 @@ function selectAnswer(input) {
   const value = Number(input.value);
   if (!Number.isInteger(value) || value < 1 || value > 5) return;
   state.answers[current.key] = value;
-  track("question_answered", { question_number: state.question + 1, dimension: current.category.id, answer_value: value });
+  track("question_answered", {
+    question_key: current.key,
+    question_number: state.question + 1,
+    dimension: current.category.id,
+    question_text: current.text,
+    answer_value: value,
+    answer_label: levels[value - 1].label
+  });
   saveState();
   app.querySelectorAll(`input[name="${current.key}"]`).forEach(radio => {
     const selected = Number(radio.value) === value;
@@ -460,24 +563,35 @@ app.addEventListener("submit", async event => {
     return;
   }
   state.profile = profile;
-  track("lead_details_submitted", { lead_capture_stage: "before_quiz", crm_synced: submission.synced });
+  track("lead_details_submitted", { lead_capture_stage: "before_quiz", crm_synced: submission.synced }, { includeProfile: true });
   track("diagnostic_started", { returning_user: Object.keys(state.answers).length > 0 });
-  navigate(() => {
+  await navigate(() => {
     state.screen = "quiz";
     state.question = furthestQuestion();
   }, { message: `Vamos começar, ${firstName()}. Pergunta ${furthestQuestion() + 1} de ${questions.length}` });
+  const current = questions[state.question];
+  track("question_viewed", {
+    question_key: current.key,
+    question_number: state.question + 1,
+    dimension: current.category.id,
+    question_text: current.text
+  });
 });
 
 app.addEventListener("click", event => {
   const trigger = event.target.closest("[data-action]");
   if (!trigger) return;
   const action = trigger.dataset.action;
-  if (action === "print") { window.print(); return; }
+  if (action === "print") { track("print_result"); window.print(); return; }
   if (action === "back" && state.question > 0) return moveQuestion(state.question - 1);
   if (action === "next") return advanceQuiz();
-  if (action === "restart") return navigate(() => {
+  if (action === "restart") {
+    track("diagnostic_restarted", { previous_questions_answered: Object.keys(state.answers).length });
+    rotateAnalyticsSession();
+    return navigate(() => {
     state = { ...createDefaultState(), profile: state.profile };
-  }, { direction: "back", message: "Diagnóstico reiniciado" });
+    }, { direction: "back", message: "Diagnóstico reiniciado" });
+  }
 });
 
 app.addEventListener("click", event => {
@@ -523,5 +637,12 @@ globalThis.window?.addEventListener?.("scroll", () => {
   scrollTicking = true;
   requestAnimationFrame(updateScrollState);
 }, { passive: true });
+
+globalThis.window?.addEventListener?.("pagehide", () => {
+  track("session_paused", {
+    last_question_number: state.screen === "quiz" ? state.question + 1 : undefined,
+    questions_answered: Object.keys(state.answers).length
+  });
+});
 
 render();
