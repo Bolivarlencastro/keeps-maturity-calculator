@@ -30,7 +30,6 @@ function icon(name) {
   const paths = {
     arrow: '<path d="m9 18 6-6-6-6"/>',
     check: '<path d="m5 12 4 4L19 6"/>',
-    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
     trend: '<path d="M3 17l6-6 4 4 8-9"/><path d="M15 6h6v6"/>',
     restart: '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/>'
   };
@@ -41,7 +40,6 @@ function render() {
   document.body?.setAttribute("data-screen", state.screen);
   if (state.screen === "quiz") renderQuiz();
   else if (state.screen === "result") renderResult();
-  else if (state.screen === "identify") renderIdentify();
   else renderIntro();
 }
 
@@ -66,9 +64,13 @@ function renderIntro() {
         <span class="kicker">Diagnóstico gratuito · resultado imediato</span>
         <h1 tabindex="-1">O próximo salto do seu T&D começa com um diagnóstico claro.</h1>
         <p class="hero-lead">Avalie as principais dimensões da sua operação de T&amp;D e descubra onde concentrar esforços para ampliar o impacto no negócio.</p>
-        <div class="hero-actions">
-          <button class="button button-primary" data-action="start">${answered ? "Continuar diagnóstico" : "Começar diagnóstico"} ${icon("arrow")}</button>
-        </div>
+        <form class="hero-lead-form" data-identify-form>
+          <label for="lead-name"><span>Nome</span><input id="lead-name" name="name" type="text" autocomplete="name" maxlength="120" placeholder="Seu nome" required value="${escapeAttribute(state.profile?.name || "")}" /></label>
+          <label for="lead-email"><span>E-mail profissional</span><input id="lead-email" name="email" type="email" autocomplete="email" maxlength="254" placeholder="voce@empresa.com" required value="${escapeAttribute(state.profile?.email || "")}" /></label>
+          <button class="button button-primary" type="submit"><span data-submit-label>${answered ? "Continuar diagnóstico" : "Começar diagnóstico"}</span> ${icon("arrow")}</button>
+          <p class="form-error" data-identify-error role="alert" hidden></p>
+          <p class="hero-form-privacy">Ao continuar, você concorda com nossa <a href="https://keeps.com.br/politica-de-privacidade/" target="_blank" rel="noreferrer">Política de Privacidade</a>.</p>
+        </form>
       </div>
       <div class="hero-visual" aria-label="Prévia das dimensões avaliadas">
         <div class="orbit orbit-one"></div><div class="orbit orbit-two"></div>
@@ -82,35 +84,6 @@ function renderIntro() {
         <article><strong>Prioridade</strong><span>Os três pontos que pedem atenção agora</span></article>
         <article><strong>Próximo passo</strong><span>Recomendações práticas, não apenas uma nota</span></article>
       </div>
-    </section>`;
-}
-
-function renderIdentify() {
-  app.innerHTML = `
-    <section class="identify-shell shell">
-      <div class="identify-copy">
-        <span class="kicker">Diagnóstico personalizado</span>
-        <h1 tabindex="-1">Antes de começar, queremos conhecer você.</h1>
-        <p>Informe apenas seus dados essenciais para personalizar a experiência e acessar seu diagnóstico ao final.</p>
-        <div class="identify-benefits" aria-label="O que você receberá">
-          <span>${icon("check")} Pontuação de maturidade</span>
-          <span>${icon("check")} Prioridades de evolução</span>
-          <span>${icon("check")} Recomendações práticas</span>
-        </div>
-      </div>
-      <form class="identify-form" data-identify-form>
-        <div>
-          <label for="lead-name">Como podemos chamar você?</label>
-          <input id="lead-name" name="name" type="text" autocomplete="name" maxlength="120" required value="${escapeAttribute(state.profile?.name || "")}" />
-        </div>
-        <div>
-          <label for="lead-email">Seu melhor e-mail profissional</label>
-          <input id="lead-email" name="email" type="email" autocomplete="email" maxlength="254" required value="${escapeAttribute(state.profile?.email || "")}" />
-        </div>
-        <button class="button button-primary" type="submit"><span data-submit-label>Começar meu diagnóstico</span> ${icon("arrow")}</button>
-        <p class="form-error" data-identify-error role="alert" hidden></p>
-        <p class="identify-privacy">Ao continuar, você concorda com nossa <a href="https://keeps.com.br/politica-de-privacidade/" target="_blank" rel="noreferrer">Política de Privacidade</a>.</p>
-      </form>
     </section>`;
 }
 
@@ -315,7 +288,7 @@ function prefersReducedMotion() {
 }
 
 function focusCurrentHeading() {
-  const heading = app.querySelector(".question-panel:not([hidden]) .question-title, .result-head h1, .identify-copy h1, .hero h1");
+  const heading = app.querySelector(".question-panel:not([hidden]) .question-title, .result-head h1, .hero h1");
   heading?.focus({ preventScroll: true });
 }
 
@@ -453,6 +426,7 @@ app.addEventListener("submit", async event => {
   if (navigationLocked) return;
   const data = new FormData(event.target);
   const profile = { name: String(data.get("name") || "").trim(), email: String(data.get("email") || "").trim().toLowerCase() };
+  track("diagnostic_cta_clicked", { returning_user: Object.keys(state.answers).length > 0 });
   const submit = event.target.querySelector('button[type="submit"]');
   const label = submit?.querySelector("[data-submit-label]");
   const error = event.target.querySelector("[data-identify-error]");
@@ -464,7 +438,7 @@ app.addEventListener("submit", async event => {
     submission = await submitLeadToHubSpot(profile);
   } catch (submissionError) {
     if (submit) submit.disabled = false;
-    if (label) label.textContent = "Começar meu diagnóstico";
+    if (label) label.textContent = Object.keys(state.answers).length ? "Continuar diagnóstico" : "Começar diagnóstico";
     if (error) { error.textContent = submissionError.message; error.hidden = false; }
     track("lead_capture_error", { lead_capture_stage: "before_quiz" });
     return;
@@ -483,11 +457,6 @@ app.addEventListener("click", event => {
   if (!trigger) return;
   const action = trigger.dataset.action;
   if (action === "print") { window.print(); return; }
-  if (action === "start") return navigate(() => {
-    track("diagnostic_cta_clicked", { returning_user: Boolean(state.profile?.email) });
-    state.screen = state.profile?.name && state.profile?.email ? "quiz" : "identify";
-    state.question = furthestQuestion();
-  }, { message: state.profile?.name && state.profile?.email ? `Pergunta ${furthestQuestion() + 1} de ${questions.length}` : "Identificação para começar o diagnóstico" });
   if (action === "back" && state.question > 0) return moveQuestion(state.question - 1);
   if (action === "next") return advanceQuiz();
   if (action === "restart") return navigate(() => {

@@ -55,8 +55,8 @@ test("sanitizes persisted state before rendering", () => {
 });
 
 test("normalizes and preserves progressive lead data", () => {
-  const normalized = normalizeState({ screen: "identify", profile: { name: "  Bolívar Alencastro  ", email: " BOLIVAR@EXAMPLE.COM " } });
-  assert.equal(normalized.screen, "identify");
+  const normalized = normalizeState({ screen: "intro", profile: { name: "  Bolívar Alencastro  ", email: " BOLIVAR@EXAMPLE.COM " } });
+  assert.equal(normalized.screen, "intro");
   assert.deepEqual(normalized.profile, { name: "Bolívar Alencastro", email: "bolivar@example.com" });
   assert.deepEqual(createDefaultState().profile, { name: "", email: "" });
 });

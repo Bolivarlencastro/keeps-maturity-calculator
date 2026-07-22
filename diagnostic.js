@@ -100,7 +100,7 @@ export const questions = categories.flatMap((category, categoryIndex) =>
   }))
 );
 
-const screens = new Set(["intro", "identify", "quiz", "result"]);
+const screens = new Set(["intro", "quiz", "result"]);
 const questionKeys = new Set(questions.map(question => question.key));
 
 export function createDefaultState() {
