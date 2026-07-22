@@ -14,6 +14,8 @@ Abra `http://localhost:4173`.
 
 O projeto é totalmente estático e pode ser publicado diretamente pelo GitHub Pages a partir da raiz da branch `main`. O arquivo `.nojekyll` evita processamento desnecessário pelo Jekyll.
 
+Versão pública: https://bolivarlencastro.github.io/keeps-maturity-calculator/
+
 Antes de publicar uma nova versão:
 
 ```bash
