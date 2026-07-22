@@ -72,28 +72,26 @@ function renderIntro() {
           <p class="hero-form-privacy">Ao continuar, você concorda com nossa <a href="https://keeps.com.br/politica-de-privacidade/" target="_blank" rel="noreferrer">Política de Privacidade</a>.</p>
         </form>
       </div>
-      <div class="hero-visual" aria-label="Prévia de um mapa de maturidade">
-        <div class="maturity-preview">
-          <div class="preview-heading">
-            <span>Prévia do resultado</span>
-            <small><i></i> 9 dimensões</small>
-          </div>
-          <h2>Mapa de maturidade</h2>
-          <p>Uma leitura objetiva das dimensões que mais pedem atenção.</p>
-          <div class="preview-list" aria-hidden="true">
-            ${[
-              ["Propósito", 76],
-              ["Diagnóstico", 64],
-              ["Metodologias", 58],
-              ["Escalabilidade", 70],
-              ["Indicadores", 38]
-            ].map(([name, value]) => `<div class="preview-row ${value === 38 ? "is-priority" : ""}"><span>${name}</span><div><i style="--preview-value:${value}%"></i></div><b>${value}</b></div>`).join("")}
-          </div>
-          <div class="preview-insight">
-            <span>${icon("trend")}</span>
-            <div><small>Prioridade identificada</small><strong>Comece pelos indicadores</strong></div>
-          </div>
-        </div>
+      <div class="hero-visual" aria-hidden="true">
+        <div class="flow-glow flow-glow-one"></div>
+        <div class="flow-glow flow-glow-two"></div>
+        <svg class="hero-flow" viewBox="0 0 520 460" role="presentation">
+          <defs>
+            <linearGradient id="flow-gradient" x1="40" y1="410" x2="470" y2="50" gradientUnits="userSpaceOnUse">
+              <stop offset="0" stop-color="#6750a4" stop-opacity=".18" />
+              <stop offset=".56" stop-color="#a8379c" stop-opacity=".52" />
+              <stop offset="1" stop-color="#de2b81" stop-opacity=".28" />
+            </linearGradient>
+          </defs>
+          <path class="flow-track" d="M42 390 C126 380 126 300 205 294 C287 287 266 201 346 183 C408 169 409 105 478 66" />
+          <path class="flow-line" pathLength="1" d="M42 390 C126 380 126 300 205 294 C287 287 266 201 346 183 C408 169 409 105 478 66" />
+          <g class="flow-nodes">
+            <circle cx="42" cy="390" r="5" />
+            <circle cx="205" cy="294" r="6" />
+            <circle cx="346" cy="183" r="7" />
+            <circle class="flow-node-final" cx="478" cy="66" r="9" />
+          </g>
+        </svg>
       </div>
     </section>
     <section class="trust-strip">
