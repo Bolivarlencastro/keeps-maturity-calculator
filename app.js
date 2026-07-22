@@ -75,39 +75,21 @@ function renderIntro() {
       <div class="hero-visual" aria-hidden="true">
         <div class="flow-glow flow-glow-one"></div>
         <div class="flow-glow flow-glow-two"></div>
-        <svg class="hero-flow" viewBox="0 0 600 520" role="presentation">
+        <svg class="hero-flow" viewBox="0 0 520 460" role="presentation">
           <defs>
-            <linearGradient id="flow-gradient" x1="48" y1="458" x2="550" y2="48" gradientUnits="userSpaceOnUse">
+            <linearGradient id="flow-gradient" x1="40" y1="410" x2="470" y2="50" gradientUnits="userSpaceOnUse">
               <stop offset="0" stop-color="#6750a4" stop-opacity=".18" />
               <stop offset=".56" stop-color="#a8379c" stop-opacity=".52" />
               <stop offset="1" stop-color="#de2b81" stop-opacity=".28" />
             </linearGradient>
-            <linearGradient id="flow-surface-gradient" x1="70" y1="470" x2="520" y2="100" gradientUnits="userSpaceOnUse">
-              <stop offset="0" stop-color="#6750a4" stop-opacity=".025" />
-              <stop offset=".58" stop-color="#a8379c" stop-opacity=".09" />
-              <stop offset="1" stop-color="#de2b81" stop-opacity=".025" />
-            </linearGradient>
-            <filter id="flow-soft-shadow" x="-30%" y="-30%" width="160%" height="160%">
-              <feGaussianBlur stdDeviation="8" />
-            </filter>
           </defs>
-          <path class="flow-surface" d="M50 444 C143 432 145 343 236 336 C329 329 302 230 397 210 C470 194 466 116 550 66 L550 121 C485 157 485 226 415 245 C333 267 349 357 252 370 C161 382 151 458 50 476 Z" />
-          <path class="flow-depth flow-depth-back" d="M30 415 C128 405 132 323 221 314 C316 305 292 214 382 194 C455 178 455 110 535 70" />
-          <path class="flow-depth flow-depth-front" d="M72 473 C168 461 169 379 259 369 C354 358 332 272 424 249 C493 232 496 165 567 126" />
-          <path class="flow-shadow-line" d="M50 444 C143 432 145 343 236 336 C329 329 302 230 397 210 C470 194 466 116 550 66" />
-          <path class="flow-track" d="M50 444 C143 432 145 343 236 336 C329 329 302 230 397 210 C470 194 466 116 550 66" />
-          <path class="flow-line" pathLength="1" d="M50 444 C143 432 145 343 236 336 C329 329 302 230 397 210 C470 194 466 116 550 66" />
-          <g class="flow-halos">
-            <ellipse cx="50" cy="444" rx="22" ry="8" />
-            <ellipse cx="236" cy="336" rx="27" ry="10" />
-            <ellipse cx="397" cy="210" rx="33" ry="12" />
-            <ellipse cx="550" cy="66" rx="40" ry="15" />
-          </g>
+          <path class="flow-track" d="M42 390 C126 380 126 300 205 294 C287 287 266 201 346 183 C408 169 409 105 478 66" />
+          <path class="flow-line" pathLength="1" d="M42 390 C126 380 126 300 205 294 C287 287 266 201 346 183 C408 169 409 105 478 66" />
           <g class="flow-nodes">
-            <circle cx="50" cy="444" r="5" />
-            <circle cx="236" cy="336" r="6" />
-            <circle cx="397" cy="210" r="7" />
-            <circle class="flow-node-final" cx="550" cy="66" r="9" />
+            <circle cx="42" cy="390" r="5" />
+            <circle cx="205" cy="294" r="6" />
+            <circle cx="346" cy="183" r="7" />
+            <circle class="flow-node-final" cx="478" cy="66" r="9" />
           </g>
         </svg>
       </div>
