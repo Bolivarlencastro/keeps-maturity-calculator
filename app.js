@@ -67,32 +67,39 @@ function renderIntro() {
 }
 
 function renderQuiz() {
-  const current = questions[state.question];
-  const selected = state.answers[current.key];
   const progress = (state.question + 1) / questions.length * 100;
+  const current = questions[state.question];
   app.innerHTML = `
     <div class="quiz-progress" role="progressbar" aria-label="Progresso do diagnóstico" aria-valuemin="1" aria-valuemax="20" aria-valuenow="${state.question + 1}" aria-valuetext="Pergunta ${state.question + 1} de ${questions.length}"><span style="width:${progress}%"></span></div>
     <section class="quiz-shell shell">
       <div class="quiz-focus">
-        <div class="question-panel">
-          <span class="question-count">Pergunta ${state.question + 1} de ${questions.length}</span>
-          <h1 class="question-title" tabindex="-1">${current.text}</h1>
-          <p class="question-instruction" id="question-instruction">Como isso acontece hoje na sua operação?</p>
-          <fieldset class="single-question">
-            <legend class="sr-only">Selecione uma resposta. A escala vai de 1, ainda não, a 5, sou referência.</legend>
-            <div class="answer-scale">
-              ${levels.map(level => `<label class="answer-option ${selected === level.value ? "selected" : ""}">
-                <input type="radio" name="${current.key}" value="${level.value}" aria-describedby="question-instruction" ${selected === level.value ? "checked" : ""}/>
-                <span class="answer-key" aria-hidden="true">${level.value}</span>
-                <strong>${level.short}</strong>
-              </label>`).join("")}
-            </div>
-          </fieldset>
+        <div class="question-stage">
+          ${questions.map((question, index) => {
+            const selected = state.answers[question.key];
+            const active = index === state.question;
+            const instructionId = `question-instruction-${question.key}`;
+            const titleId = `question-title-${question.key}`;
+            return `<section class="question-panel ${active ? "is-active" : ""}" data-question-index="${index}" aria-labelledby="${titleId}" ${active ? "" : "hidden"}>
+              <span class="question-count">Pergunta ${index + 1} de ${questions.length}</span>
+              <h1 class="question-title" id="${titleId}" tabindex="-1">${question.text}</h1>
+              <p class="question-instruction" id="${instructionId}">Como isso acontece hoje na sua operação?</p>
+              <fieldset class="single-question">
+                <legend class="sr-only">Selecione uma resposta. A escala vai de 1, ainda não, a 5, sou referência.</legend>
+                <div class="answer-scale">
+                  ${levels.map(level => `<label class="answer-option ${selected === level.value ? "selected" : ""}">
+                    <input type="radio" name="${question.key}" value="${level.value}" aria-describedby="${instructionId}" ${selected === level.value ? "checked" : ""}/>
+                    <span class="answer-key" aria-hidden="true">${level.value}</span>
+                    <strong>${level.short}</strong>
+                  </label>`).join("")}
+                </div>
+              </fieldset>
+            </section>`;
+          }).join("")}
         </div>
         <div class="quiz-actions">
           <button class="button button-secondary" data-action="back" ${state.question === 0 ? "disabled" : ""}>Voltar</button>
           <p class="keyboard-hint">Use 1–5 para responder e Enter para continuar</p>
-          <button class="button button-primary" data-action="next" ${selected ? "" : "disabled"}>${state.question === questions.length - 1 ? "Ver resultado" : "Continuar"} ${icon("arrow")}</button>
+          <button class="button button-primary" data-action="next" ${state.answers[current.key] ? "" : "disabled"}><span data-next-label>${state.question === questions.length - 1 ? "Ver resultado" : "Continuar"}</span>${icon("arrow")}</button>
         </div>
       </div>
     </section>`;
@@ -209,7 +216,7 @@ function prefersReducedMotion() {
 }
 
 function focusCurrentHeading() {
-  const heading = app.querySelector(".question-title, .result-head h1, .hero h1");
+  const heading = app.querySelector(".question-panel:not([hidden]) .question-title, .result-head h1, .hero h1");
   heading?.focus({ preventScroll: true });
 }
 
@@ -251,6 +258,69 @@ async function navigate(mutator, { direction = "forward", message = "" } = {}) {
   }
 }
 
+function updateQuizChrome() {
+  const current = questions[state.question];
+  const progress = app.querySelector(".quiz-progress");
+  if (progress) {
+    progress.setAttribute("aria-valuenow", String(state.question + 1));
+    progress.setAttribute("aria-valuetext", `Pergunta ${state.question + 1} de ${questions.length}`);
+    progress.querySelector("span")?.style.setProperty("width", `${(state.question + 1) / questions.length * 100}%`);
+  }
+  const back = app.querySelector('[data-action="back"]');
+  const next = app.querySelector('[data-action="next"]');
+  if (back) back.disabled = state.question === 0;
+  if (next) {
+    next.disabled = !state.answers[current.key];
+    const label = next.querySelector("[data-next-label]");
+    if (label) label.textContent = state.question === questions.length - 1 ? "Ver resultado" : "Continuar";
+  }
+}
+
+async function moveQuestion(nextQuestion) {
+  if (navigationLocked || state.screen !== "quiz") return;
+  const targetIndex = Math.min(Math.max(nextQuestion, 0), questions.length - 1);
+  if (targetIndex === state.question) return;
+  navigationLocked = true;
+  const previousPanel = app.querySelector(`.question-panel[data-question-index="${state.question}"]`);
+  const nextPanel = app.querySelector(`.question-panel[data-question-index="${targetIndex}"]`);
+  try {
+    state.question = targetIndex;
+    saveState();
+    updateQuizChrome();
+    if (!prefersReducedMotion() && previousPanel?.animate) {
+      const exit = previousPanel.animate([{ opacity: 1 }, { opacity: 0 }], {
+        duration: 100,
+        easing: "ease-out",
+        fill: "forwards"
+      });
+      await exit.finished.catch(() => {});
+      exit.cancel();
+    }
+    if (previousPanel) {
+      previousPanel.hidden = true;
+      previousPanel.classList.remove("is-active");
+    }
+    if (nextPanel) {
+      nextPanel.hidden = false;
+      nextPanel.classList.remove("is-active");
+      void nextPanel.offsetWidth;
+      nextPanel.classList.add("is-active");
+    }
+    focusCurrentHeading();
+    scrollToAppTop();
+    announce(`Pergunta ${state.question + 1} de ${questions.length}`);
+  } finally {
+    navigationLocked = false;
+  }
+}
+
+function advanceQuiz() {
+  const current = questions[state.question];
+  if (!state.answers[current?.key]) return;
+  if (state.question < questions.length - 1) return moveQuestion(state.question + 1);
+  return navigate(() => { state.screen = "result"; }, { message: "Resultado do diagnóstico" });
+}
+
 function selectAnswer(input) {
   const current = questions[state.question];
   if (!current || input.name !== current.key) return;
@@ -285,13 +355,8 @@ app.addEventListener("click", event => {
     state.screen = "quiz";
     state.question = furthestQuestion();
   }, { message: `Pergunta ${furthestQuestion() + 1} de ${questions.length}` });
-  if (action === "back" && state.question > 0) return navigate(() => {
-    state.question -= 1;
-  }, { direction: "back", message: `Pergunta ${state.question} de ${questions.length}` });
-  if (action === "next" && state.answers[questions[state.question]?.key]) return navigate(() => {
-    if (state.question === questions.length - 1) state.screen = "result";
-    else state.question += 1;
-  }, { message: state.question === questions.length - 1 ? "Resultado do diagnóstico" : `Pergunta ${state.question + 2} de ${questions.length}` });
+  if (action === "back" && state.question > 0) return moveQuestion(state.question - 1);
+  if (action === "next") return advanceQuiz();
   if (action === "restart") return navigate(() => {
     state = { screen: "intro", question: 0, answers: {} };
   }, { direction: "back", message: "Diagnóstico reiniciado" });
@@ -302,10 +367,7 @@ document.addEventListener("keydown", event => {
   const current = questions[state.question];
   if (event.key === "Enter" && state.answers[current.key]) {
     event.preventDefault();
-    return navigate(() => {
-      if (state.question === questions.length - 1) state.screen = "result";
-      else state.question += 1;
-    }, { message: state.question === questions.length - 1 ? "Resultado do diagnóstico" : `Pergunta ${state.question + 2} de ${questions.length}` });
+    return advanceQuiz();
   }
   const value = Number(event.key);
   if (value < 1 || value > 5) return;

@@ -29,9 +29,10 @@ npm test
 - As 20 perguntas, 9 dimensões e a pontuação de 20–100 foram preservadas.
 - Resultado completo antes da conversão; agendamento comercial é opcional.
 - Estado persistido é validado antes de renderizar e o progresso anterior continua compatível.
+- As 20 perguntas permanecem montadas no DOM; avançar ou voltar alterna somente o painel visível.
 - Selecionar uma resposta atualiza apenas o componente necessário, preservando foco e teclado.
 - Atalhos `1–5` e `Enter`, anúncios para leitores de tela e foco previsível entre perguntas.
-- View Transitions, `@starting-style`, animação do score e rolagem contextual como melhorias progressivas.
+- Opacidade aplicada aos elementos da pergunta, progresso persistente, View Transitions entre telas, `@starting-style`, animação do score e rolagem contextual como melhorias progressivas.
 - `prefers-reduced-motion` respeitado; navegadores sem as APIs novas recebem o fluxo completo sem animação.
 - Formulário nativo do HubSpot estilizado com o mesmo componente visual dos demais botões, sem submit duplicado.
 - Relatório imprimível ou exportável em PDF pelo navegador.
