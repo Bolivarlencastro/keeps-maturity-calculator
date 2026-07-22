@@ -73,7 +73,7 @@ function renderIntro() {
       <div class="hero-visual" aria-label="Prévia das dimensões avaliadas">
         <div class="orbit orbit-one"></div><div class="orbit orbit-two"></div>
         <div class="score-preview"><span>9</span><small>dimensões<br/>avaliadas</small></div>
-        ${categories.slice(0, 6).map((item, index) => `<span class="dimension-pill pill-${index + 1}">${item.name}</span>`).join("")}
+        ${categories.slice(0, 6).map((item, index) => `<span class="dimension-pill pill-${index + 1}">${item.shortName || item.name}</span>`).join("")}
       </div>
     </section>
     <section class="trust-strip">
@@ -157,7 +157,7 @@ function renderQuiz() {
               <h1 class="question-title" id="${titleId}" tabindex="-1">${question.text}</h1>
               <p class="question-instruction" id="${instructionId}">${index === 0 && givenName ? `${givenName}, como isso acontece hoje na sua operação?` : "Como isso acontece hoje na sua operação?"}</p>
               <fieldset class="single-question">
-                <legend class="sr-only">Selecione uma resposta. A escala vai de 1, ainda não, a 5, sou referência.</legend>
+                <legend class="sr-only">Selecione uma resposta. A escala vai de 1, desconheço, a 5, especialista.</legend>
                 <div class="answer-scale">
                   ${levels.map(level => `<label class="answer-option ${selected === level.value ? "selected" : ""}">
                     <input type="radio" name="${question.key}" value="${level.value}" aria-describedby="${instructionId}" ${selected === level.value ? "checked" : ""}/>
@@ -188,6 +188,7 @@ function renderResult() {
   const givenName = escapeHtml(firstName());
   const sorted = [...result.scores].sort((a, b) => a.score - b.score);
   const top = [...result.scores].sort((a, b) => b.score - a.score)[0];
+  const resultPlaybook = playbooks[result.classification];
   const whatsappMessage = `Olá! Concluí o Diagnóstico de Maturidade em T&D da Keeps. Meu resultado foi ${result.total}/100 (${result.classification}) e gostaria de conversar com um especialista.`;
   const whatsappUrl = `https://wa.me/554896064505?text=${encodeURIComponent(whatsappMessage)}`;
   const message = result.total >= 80 ? "Sua operação já é referência. O desafio agora é transformar excelência em vantagem competitiva." : result.total >= 60 ? "Você tem uma base consistente. Agora é hora de conectar as práticas e ampliar o impacto no negócio." : result.total >= 40 ? "Existem boas práticas em curso, mas elas ainda precisam ganhar consistência e conexão estratégica." : "Você tem uma ótima oportunidade de construir as bases certas, na ordem certa, sem carregar processos desnecessários.";
@@ -211,17 +212,17 @@ function renderResult() {
             <p>Use este mapa para identificar desequilíbrios na operação.</p>
           </div>
           <div class="score-grid">
-            ${result.scores.map(item => `<article class="score-row"><div><strong>${item.name}</strong><span>${levelFor(item.score)}</span></div><div class="bar"><span style="width:${item.score}%"></span></div><b>${item.score}</b></article>`).join("")}
+            ${result.scores.map(item => `<article class="score-row"><div><strong>${item.shortName || item.name}</strong><span>${levelFor(item.score)}</span></div><div class="bar"><span style="width:${item.score}%"></span></div><b>${Math.round(item.score)}</b></article>`).join("")}
           </div>
           </section>
           <section class="priorities">
           <div class="priority-heading"><span class="section-label">Plano de evolução</span><h2>Comece por estas três prioridades</h2><p>Uma sequência recomendada a partir dos seus menores resultados.</p></div>
           <div class="priority-grid">
-            ${sorted.slice(0, 3).map((item, index) => `<article class="priority-card"><span class="priority-number">0${index + 1}</span><small>${item.name} · ${item.score}/100</small><h3>${playbooks[item.id].action}</h3><p>${playbooks[item.id].detail}</p></article>`).join("")}
+            ${sorted.slice(0, 3).map((item, index) => `<article class="priority-card"><span class="priority-number">0${index + 1}</span><small>${item.shortName || item.name} · ${Math.round(item.score)}/100</small><h3>${resultPlaybook[item.id].action}</h3><p>${resultPlaybook[item.id].detail}</p></article>`).join("")}
           </div>
           </section>
           <section class="strength-card">
-            <div class="strength-icon">${icon("trend")}</div><div><span class="section-label">Seu ponto de alavancagem</span><h3>${top.name}</h3><p>Use as práticas que já funcionam nessa dimensão para acelerar a evolução das áreas prioritárias.</p></div>
+            <div class="strength-icon">${icon("trend")}</div><div><span class="section-label">Seu ponto de alavancagem</span><h3>${top.shortName || top.name}</h3><p>Use as práticas que já funcionam nessa dimensão para acelerar a evolução das áreas prioritárias.</p></div>
           </section>
           <div class="result-tools"><button class="text-button" data-action="restart">${icon("restart")} Refazer diagnóstico</button><button class="text-button" data-action="print">Imprimir ou salvar em PDF</button></div>
         </div>

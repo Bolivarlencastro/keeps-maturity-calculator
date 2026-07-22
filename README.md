@@ -26,7 +26,8 @@ npm test
 
 - HTML semântico, CSS responsivo e JavaScript modular, sem framework.
 - Regras do diagnóstico isoladas em `diagnostic.js`; a interface e as integrações ficam em `app.js`.
-- As 20 perguntas, 9 dimensões e a pontuação de 20–100 foram preservadas.
+- As 20 perguntas, 5 alternativas, 9 dimensões, classificações e recomendações foram recuperadas do bundle público da calculadora original e preservadas literalmente.
+- A nota geral pondera igualmente as 20 perguntas; as notas de dimensão são médias internas de seus respectivos agrupamentos.
 - Captura progressiva: nome e e-mail antes do quiz, resultado completo sem novo bloqueio e consultoria opcional depois do resultado.
 - Nome e e-mail personalizam a experiência e preenchem automaticamente o formulário comercial.
 - Telefone/WhatsApp é apresentado como opcional no pedido de consultoria.
@@ -43,6 +44,8 @@ npm test
 - Identidade alinhada ao site institucional: logo oficial, Roboto Flex, roxo `#6750A4` e gradiente Keeps.
 
 Para uma versão 100% autocontida, basta hospedar as fontes localmente ou usar a pilha de fontes do sistema.
+
+A evidência e as regras recuperadas da aplicação original estão documentadas em [`docs/original-calculator-spec.md`](./docs/original-calculator-spec.md).
 
 ## Integração da captura inicial
 
