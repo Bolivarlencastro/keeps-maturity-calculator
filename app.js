@@ -290,6 +290,7 @@ function renderResult() {
           <section class="strength-card">
             <div class="strength-icon">${icon("trend")}</div><div><span class="section-label">Seu ponto de alavancagem</span><h3>${top.shortName || top.name}</h3><p>Use as práticas que já funcionam nessa dimensão para acelerar a evolução das áreas prioritárias.</p></div>
           </section>
+          <a class="button button-primary mobile-consultation-cta" href="#consultoria">Quero transformar o resultado em um plano ${icon("arrow")}</a>
           <section class="dimension-plan">
             <div class="priority-heading"><span class="section-label">Diagnóstico completo</span><h2>Seu plano para as nove dimensões</h2><p>Abra cada dimensão para consultar pontos fortes, oportunidades e próximos passos.</p></div>
             <div class="dimension-plan-list">
@@ -314,7 +315,7 @@ function renderResult() {
           </section>
           <div class="result-tools"><button class="text-button" data-action="restart">${icon("restart")} Refazer diagnóstico</button><button class="text-button" data-action="print">Imprimir ou salvar em PDF</button></div>
         </div>
-        <aside class="result-lead" aria-label="Solicite uma consultoria com a Keeps">
+        <aside class="result-lead" id="consultoria" aria-label="Solicite uma consultoria com a Keeps">
           <div class="sticky-conversion">
             <span class="section-label">Consultoria gratuita de 1 hora</span>
             <h2>Transforme seu diagnóstico em um plano de ação.</h2>
@@ -621,6 +622,7 @@ app.addEventListener("click", event => {
 
 app.addEventListener("click", event => {
   if (event.target.closest(".whatsapp-button")) track("whatsapp_click", { placement: "result_consultation" });
+  if (event.target.closest(".mobile-consultation-cta")) track("consultation_cta_clicked", { placement: "mobile_result_summary" });
 });
 
 document.addEventListener("keydown", event => {

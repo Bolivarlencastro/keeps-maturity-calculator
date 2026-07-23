@@ -37,6 +37,7 @@ npm test
 - Selecionar uma resposta atualiza apenas o componente necessário, preservando foco e teclado.
 - Atalhos `1–5` e `Enter`, anúncios para leitores de tela e foco previsível entre perguntas.
 - Opacidade aplicada aos elementos da pergunta, progresso persistente, View Transitions entre telas, `@starting-style`, animação do score e rolagem contextual como melhorias progressivas.
+- Fluxo mobile dedicado com áreas seguras de iPhone, altura dinâmica de viewport, navegação fixa acessível, alvos de toque amplos, proteção contra zoom de formulários e atalho para a consultoria no resultado.
 - `prefers-reduced-motion` respeitado; navegadores sem as APIs novas recebem o fluxo completo sem animação.
 - Formulário nativo do HubSpot estilizado com o mesmo componente visual dos demais botões, sem submit duplicado.
 - Contrato de `dataLayer` para CTA, identificação, início, resposta, conclusão, solicitação de consultoria e clique no WhatsApp.

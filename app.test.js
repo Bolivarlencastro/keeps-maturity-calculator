@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 
 const { categories, calculate, createDefaultState, levels, normalizeState, playbooks, questions } = await import("./diagnostic.js");
 const { recommendations } = await import("./recommendations.js");
@@ -75,4 +76,16 @@ test("uses the expected classification boundaries", () => {
   assert.equal(calculate(answersAt(2)).classification, "Intermediário");
   assert.equal(calculate(answersAt(3)).classification, "Avançado");
   assert.equal(calculate(answersAt(4)).classification, "Especialista");
+});
+
+test("keeps critical mobile UX protections in place", async () => {
+  const [appSource, css] = await Promise.all([
+    readFile(new URL("./app.js", import.meta.url), "utf8"),
+    readFile(new URL("./styles.css", import.meta.url), "utf8")
+  ]);
+  assert.match(appSource, /class="button button-primary mobile-consultation-cta" href="#consultoria"/);
+  assert.match(css, /--safe-bottom:env\(safe-area-inset-bottom,0px\)/);
+  assert.match(css, /min-height:calc\(100dvh - var\(--header-height\) - 4px\)/);
+  assert.match(css, /font-size:16px!important/);
+  assert.match(css, /grid-template-columns:32px minmax\(0,1fr\) 20px/);
 });
